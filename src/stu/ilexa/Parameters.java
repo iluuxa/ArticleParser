@@ -23,7 +23,8 @@ public class Parameters {
             XSSFSheet sheet = workbook.getSheetAt(0);
             Row row = sheet.getRow(0);
             for (int i = 0; i < params.size(); i++) {
-                row.createCell(Main.outputIndex+parameters.size()+i).setCellValue(params.get(i));
+                row.createCell(Main.outputIndex+i+parameters.size());
+                row.getCell(Main.outputIndex+parameters.size()+i).setCellValue(params.get(i));
             }
             workbook.write(new FileOutputStream(new File(Main.outputPath)));
         } catch (IOException e) {
@@ -46,4 +47,7 @@ public class Parameters {
         parameters.add("Удалить");
     }
 
+    public static void setParameters(ArrayList<String> parameters) {
+        Parameters.parameters = parameters;
+    }
 }

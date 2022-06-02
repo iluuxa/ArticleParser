@@ -4,41 +4,67 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.util.ArrayList;
 import java.util.Map;
 
 public class GUIHandler {
+    public static void launchMenu(){
+        JFrame frame = new JFrame("");
+        Menu panel = new Menu();
+        frame.addWindowListener(
+                new WindowAdapter() {
+                    public void windowClosing(WindowEvent e) {
+                        Main.saveState();
+                        System.exit(0);
+                    }
+                }
+        );
+        frame.getContentPane().add(panel,"Center");
+        frame.setSize(panel.getPreferredSize());
+        frame.setVisible(true);
+    }
 
-    public void launchFrame(Interpreter interpreter,ArrayList<String> addedParams, String article,Map<String,String> params){
+    public static void launchFrame(Interpreter interpreter,ArrayList<String> addedParams){
         JFrame frame = new JFrame();
-        JPanel panel = new JPanel();
-        panel.setLayout(new GridLayout(addedParams.size()+1,2));
-        JScrollPane scrollPane = new JScrollPane(panel);
+        JPanel mainPanel = new JPanel();
+        mainPanel.setLayout(new GridLayout(addedParams.size()+1,1));
+        JScrollPane scrollPane = new JScrollPane(mainPanel);
         Button bn = new Button("Menu");
 
         String[] choices = Parameters.getParameters().toArray(new String[0]);
         ArrayList<JComboBox> menus = new ArrayList<>();
         for (int i = 0; i < addedParams.size(); i++) {
+            JPanel panel = new JPanel(new GridLayout(1,2));
             JLabel label = new JLabel(addedParams.get(i));
             label.setVisible(true);
             panel.add(label);
             menus.add(new JComboBox<String>(choices));
             int index=Parameters.findByName(addedParams.get(i));
             if(index>=0){
-                menus.get(i).setSelectedItem(Parameters.getParameters().get(i));
+                menus.get(i)
+                        .setSelectedItem(Parameters
+                                        .getParameters()
+                                        .get(index));
+            }
+            else{
+                panel.setBackground(Color.RED);
             }
             menus.get(i).setVisible(true);
             panel.add(menus.get(i));
+            panel.setBorder(BorderFactory.createLineBorder(Color.black));
+            mainPanel.add(panel);
         }
         Button saveBn = new Button("Save");
         saveBn.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                ArrayList<String> addedParams = new ArrayList<>();
+                ArrayList<String> bufferedParams = new ArrayList<>();
                 for (int i = 0; i < addedParams.size(); i++) {
                     if(menus.get(i).getSelectedItem().equals("Добавить")){
                         interpreter.addKey(addedParams.get(i),addedParams.get(i));
-                        addedParams.add(addedParams.get(i));
+                        bufferedParams.add(addedParams.get(i));
                     }
                     else{
                         if(!menus.get(i).getSelectedItem().equals("Удалить")){
@@ -49,21 +75,22 @@ public class GUIHandler {
                         }
                     }
                 }
-                Parameters.addParameters(addedParams);
+                Parameters.addParameters(bufferedParams);
                 //System.out.print(interpreter.getMap().toString());
                 //launchFrame(interpreter);
                 frame.dispose();
-                System.out.print("Frame disposed");
-                interpreter.transform(params, article);
-                System.out.print("Output stream finished");
+                synchronized(Main.signal) {
+                    Main.shouldWait = false;
+                    Main.signal.notify();
+                }
             }
         });
-        panel.add(saveBn);
+        mainPanel.add(saveBn);
         frame.add(scrollPane);
+        frame.setTitle(interpreter.getSupplierCode()+" modification");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.pack();
+        frame.setSize(Main.preferedWidth,Main.preferedHeight);
         frame.setVisible(true);
-
-        System.out.print("Display finished");
     }
 }

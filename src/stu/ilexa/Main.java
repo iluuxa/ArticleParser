@@ -1,5 +1,10 @@
 package stu.ilexa;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonParser;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -7,75 +12,143 @@ import org.w3c.dom.NodeList;
 import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
-import java.io.File;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.TreeMap;
 
 public class Main {
-    public static final String outputPath = "D:\\trash\\IdeaProjects\\ArticleParser\\TestData\\мандрик_25,01,22 (1).xlsx";
-    public static final int outputIndex = 7;
+    public static final int preferedWidth = 900;
+    public static final int preferedHeight = 600;
+    public static String outputPath = "D:\\trash\\IdeaProjects\\ArticleParser\\TestData\\мандрик_25,01,22 (1).xlsx";
+    public static String inputPath = "D:\\trash\\IdeaProjects\\ArticleParser\\TestData";
+    public static String savePath = "D:\\trash\\IdeaProjects\\ArticleParser\\TestData\\save.txt";
+    public static final int outputIndex = 5;
+    public static final String NUL = "";
     public static ArrayList<Interpreter> interpreters;
+    public static final Object signal = new Object();
+    public static volatile boolean shouldWait = true;
 
     public static void main(String[] args) {
-        Parameters parameters = new Parameters();
-        parseXML("D:\\trash\\IdeaProjects\\ArticleParser\\me.xml");
-        /*Interpreter testInterpreter = new Interpreter("111111");
-        ArrayList<String> testList =new ArrayList<String>();
-        testList.add("one");
-        testList.add("two");
-        testList.add("three");
-        testInterpreter.setBuffer(testList);
-        GUIHandler.launchFrame(testInterpreter);*/
-    }
+        GUIHandler.launchMenu();
+        try {
+            synchronized (signal) {
+                while (shouldWait) {
+                    signal.wait();
+                }
+            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        File saveFile = new File(savePath);
+        System.out.println(savePath);
+        if (saveFile.exists() && !saveFile.isDirectory()) {
+            restoreState();
+        } else {
+            Parameters parameters = new Parameters();
+            interpreters = new ArrayList<>();
+        }
 
-    
-    public static void parseEntry(Node Entry){
-        NodeList children = Entry.getChildNodes();
-        String supplierCode="null";
-        String article="";
-        Map<String, String> params = new TreeMap<>();
-        for (int j = 0; j < children.getLength(); j++) {
-            if(children.item(j).getNodeName().equals("producerCode")){
-                article=children.item(j).getTextContent();
-            }
-            if(children.item(j).getNodeName().equals("supplierCode")){
-                supplierCode = children.item(j).getTextContent();
-            }
-            if(children.item(j).getNodeName().equals("param")){
-                params.put(children.item(j).getAttributes().getNamedItem("name").getTextContent(),children.item(j).getTextContent());
+        shouldWait = true;
+        File dir = new File(inputPath);
+        File[] directoryListing = dir.listFiles();
+        if (directoryListing != null) {
+            for (File child : directoryListing) {
+                if (child.getName().substring(child.getName().lastIndexOf(".") + 1).equals("xml")) {
+                    parseXML(child);
+                }
             }
         }
-        boolean present = false;
+        saveState();
+    }
+
+
+    public static void parseEntry(Node Entry) {
+        NodeList children = Entry.getChildNodes();
+        System.out.println(Entry.toString());
+        String supplierCode = NUL;
+        String article = NUL;
+        Map<String, String> params = new TreeMap<>();
+        for (int j = 0; j < children.getLength(); j++) {
+            if (children.item(j).getNodeName().equals("producerCode")) {
+                article = children.item(j).getTextContent();
+                System.out.println(article);
+            }
+            if (children.item(j).getNodeName().equals("supplierCode")) {
+                supplierCode = children.item(j).getTextContent();
+            }
+            if (children.item(j).getNodeName().equals("param")) {
+                params.put(children.item(j).getAttributes().getNamedItem("name").getTextContent(), children.item(j).getTextContent());
+            }
+        }
+        int present = -1;
         for (int j = 0; j < interpreters.size(); j++) {
-            if(interpreters.get(j).getSupplierCode().equals(supplierCode)){
-                present = true;
+            if (interpreters.get(j).getSupplierCode().equals(supplierCode)) {
+                present = j;
+                interpreters.get(j).modify(params);
                 interpreters.get(j).interpret(params, article);
                 break;
             }
         }
-        if(!present){
-            Interpreter added = new Interpreter(supplierCode);
+        if (present < 0) {
+            Interpreter added = new Interpreter(supplierCode, params);
             interpreters.add(added);
-            added.interpret(params,article);
+            added.interpret(params, article);
+        } else {
+            interpreters.get(present).modify(params);
+            interpreters.get(present).interpret(params, article);
         }
     }
 
 
-    public static void parseXML(String path){
+    public static void parseXML(File file) {
         DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-        interpreters = new ArrayList<>();
         try {
             dbf.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, false);
             DocumentBuilder db = dbf.newDocumentBuilder();
-            File xmlFile = new File(path);
-            Document doc = db.parse(xmlFile);
+            Document doc = db.parse(file);
             NodeList entries = doc.getElementsByTagName("offer");
-            for (int i = 0; i < entries.getLength(); i++){
+            for (int i = 0; i < entries.getLength(); i++) {
+                System.out.println("Entry №" + i);
                 parseEntry(entries.item(i));
             }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-        catch (Exception e) {
+    }
+
+    public static void restoreState() {
+        try {
+            FileReader restorer = new FileReader(savePath);
+            SaveState saveState = new Gson().fromJson(restorer, SaveState.class);
+            interpreters = saveState.getInterpreters();
+            Parameters.setParameters(saveState.getParameters());
+            XSSFWorkbook workbook = new XSSFWorkbook(new FileInputStream(new File(Main.outputPath)));
+            XSSFSheet sheet = workbook.getSheetAt(0);
+            Row row = sheet.getRow(0);
+            for (int i = 0; i < Parameters.getParameters().size(); i++) {
+                row.createCell(Main.outputIndex+i);
+                row.getCell(Main.outputIndex+i).setCellValue(Parameters.getParameters().get(i));
+            }
+            workbook.write(new FileOutputStream(new File(Main.outputPath)));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    public static void saveState() {
+        SaveState saveState = new SaveState(interpreters, Parameters.getParameters());
+        String jsonSaveState = new Gson().toJson(saveState);
+        try {
+            File saveFile = new File(savePath);
+            if (!saveFile.exists() || saveFile.isDirectory()) {
+                saveFile.createNewFile();
+            }
+            FileWriter saveWriter = new FileWriter(savePath);
+            saveWriter.write(jsonSaveState);
+            saveWriter.close();
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }
