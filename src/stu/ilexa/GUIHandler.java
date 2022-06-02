@@ -10,20 +10,21 @@ import java.util.ArrayList;
 import java.util.Map;
 
 public class GUIHandler {
+    public static JFrame menuFrame;
     public static void launchMenu(){
-        JFrame frame = new JFrame("");
+        menuFrame = new JFrame("");
         Menu panel = new Menu();
-        frame.addWindowListener(
+        menuFrame.addWindowListener(
                 new WindowAdapter() {
                     public void windowClosing(WindowEvent e) {
-                        Main.saveState();
+                        //Main.saveState();
                         System.exit(0);
                     }
                 }
         );
-        frame.getContentPane().add(panel,"Center");
-        frame.setSize(panel.getPreferredSize());
-        frame.setVisible(true);
+        menuFrame.getContentPane().add(panel,"Center");
+        menuFrame.setSize(panel.getPreferredSize());
+        menuFrame.setVisible(true);
     }
 
     public static void launchFrame(Interpreter interpreter,ArrayList<String> addedParams){
@@ -88,7 +89,14 @@ public class GUIHandler {
         mainPanel.add(saveBn);
         frame.add(scrollPane);
         frame.setTitle(interpreter.getSupplierCode()+" modification");
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.addWindowListener(
+                new WindowAdapter() {
+                    public void windowClosing(WindowEvent e) {
+                        Main.saveState();
+                        System.exit(0);
+                    }
+                }
+        );
         frame.pack();
         frame.setSize(Main.preferedWidth,Main.preferedHeight);
         frame.setVisible(true);

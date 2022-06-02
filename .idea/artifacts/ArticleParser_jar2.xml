@@ -1,0 +1,14 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="ArticleParser:jar2">
+    <output-path>$PROJECT_DIR$/out/artifacts/ArticleParser_jar2</output-path>
+    <root id="archive" name="ArticleParser.jar">
+      <element id="directory" name="META-INF">
+        <element id="file-copy" path="$PROJECT_DIR$/src/resourses/META-INF/MANIFEST.MF" />
+      </element>
+      <element id="module-output" name="ArticleParser" />
+      <element id="library" level="project" name="org.apache.poi:poi-ooxml:4.1.2" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/lib/gson-2.9.0.jar" path-in-jar="/" />
+      <element id="library" level="project" name="org.apache.poi:poi:4.1.2" />
+    </root>
+  </artifact>
+</component>

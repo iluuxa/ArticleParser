@@ -111,6 +111,7 @@ public class Menu extends JPanel
                     Main.shouldWait = false;
                     Main.signal.notify();
                 }
+                GUIHandler.menuFrame.dispose();
                 break;
         }
 
