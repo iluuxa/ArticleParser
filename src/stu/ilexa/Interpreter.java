@@ -13,8 +13,8 @@ import static stu.ilexa.Main.shouldWait;
 import static stu.ilexa.Main.signal;
 
 public class Interpreter {
-    private String supplierCode; //Код поставщика - идентификатор интерпретатора
-    private TreeMap<String, String> map = new TreeMap<>();//Карта ключ - значение, где ключ - название параметра в XML, а значение - множество соответствующих ему названий в XLS
+    private final String supplierCode; //Код поставщика - идентификатор интерпретатора
+    private final TreeMap<String, String> map = new TreeMap<>();//Карта ключ - значение, где ключ - название параметра в XML, а значение - множество соответствующих ему названий в XLS
 
     public Interpreter(String supplierCode, Map<String, String> params) {
         this.supplierCode = supplierCode;
@@ -29,9 +29,8 @@ public class Interpreter {
             }
         }
         if (buffer.size() > 0) {
-            GUIHandler guiHandler = new GUIHandler();
             shouldWait = true;
-            guiHandler.launchFrame(this, buffer);
+            GUIHandler.launchFrame(this, buffer);
             try {
                 synchronized (signal) {
                     while (shouldWait) {
@@ -48,14 +47,12 @@ public class Interpreter {
         //String outputPath = "D:\\trash\\IdeaProjects\\ArticleParser\\output";
         //String inputPath = "D:\\trash\\IdeaProjects\\ArticleParser\\TestData\\мандрик_25,01,22 (1).xlsx";
         try {
-            XSSFWorkbook workbook = new XSSFWorkbook(new FileInputStream(new File(Main.outputPath)));
+            XSSFWorkbook workbook = new XSSFWorkbook(new FileInputStream(Main.outputPath));
             XSSFSheet sheet = workbook.getSheetAt(0);
-            Iterator<Row> rowIterator = sheet.iterator();
 
-            while (rowIterator.hasNext()) {
-                Row row = rowIterator.next();
+            for (Row row : sheet) {
                 //System.out.println("Article = "+article+"   ;row article = "+row.getCell(6).getStringCellValue());
-                if (row.getCell(6).getStringCellValue().equals(article)) {
+                if (row.getCell(Main.articleIndex).getStringCellValue().equals(article)) {
                     //System.out.println("row number: "+row.getRowNum()+";map: "+map.toString());
                     for (Map.Entry<String, String> entry : map.entrySet()) {
                         int index = Parameters.findByName(entry.getKey());
@@ -74,7 +71,7 @@ public class Interpreter {
                         }*/
                 }
             }
-            workbook.write(new FileOutputStream(new File(Main.outputPath)));
+            workbook.write(new FileOutputStream(Main.outputPath));
         } catch (Exception e) {
             e.printStackTrace();
         }

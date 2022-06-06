@@ -118,6 +118,6 @@ public class Menu extends JPanel
     }
 
     public Dimension getPreferredSize() {
-        return new Dimension(Main.preferedWidth, Main.preferedHeight);
+        return new Dimension(Main.preferredWidth, Main.preferredHeight);
     }
 }

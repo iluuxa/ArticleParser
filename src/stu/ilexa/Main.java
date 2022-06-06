@@ -1,7 +1,7 @@
 package stu.ilexa;
 
 import com.google.gson.Gson;
-import com.google.gson.JsonParser;
+import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -14,20 +14,48 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.*;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.TreeMap;
 
 public class Main {
-    public static final int preferedWidth = 900;
-    public static final int preferedHeight = 600;
+    public static final int preferredWidth = 900;
+    public static final int preferredHeight = 600;
     public static String outputPath = "D:\\trash\\IdeaProjects\\ArticleParser\\TestData\\мандрик_25,01,22 (1).xlsx";
     public static String inputPath = "D:\\trash\\IdeaProjects\\ArticleParser\\TestData";
     public static String savePath = "D:\\trash\\IdeaProjects\\ArticleParser\\TestData\\save.txt";
-    public static final int outputIndex = 5;
     public static final String NUL = "";
     public static ArrayList<Interpreter> interpreters;
     public static final Object signal = new Object();
     public static volatile boolean shouldWait = true;
+    public static int articleIndex = 6;
+    public static int outputIndex = 5;
+
+    public static void prepare(){
+        File saveFile = new File(savePath);
+        if (saveFile.exists() && !saveFile.isDirectory()) {
+            restoreState();
+        } else {
+            new Parameters();
+            interpreters = new ArrayList<>();
+        }
+        try {
+            XSSFWorkbook workbook = new XSSFWorkbook(new FileInputStream(Main.outputPath));
+            XSSFSheet sheet = workbook.getSheetAt(0);
+            Row firstRow = sheet.getRow(0);
+            Iterator<Cell> cellIterator = firstRow.cellIterator();
+            outputIndex=0;
+            while (cellIterator.hasNext()){
+                outputIndex++;
+                Cell cell = cellIterator.next();
+                if (cell.getStringCellValue().equals("Артикул")){
+                    articleIndex=cell.getColumnIndex();
+                }
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
     public static void main(String[] args) {
         GUIHandler.launchMenu();
@@ -40,14 +68,8 @@ public class Main {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-        File saveFile = new File(savePath);
-        System.out.println(savePath);
-        if (saveFile.exists() && !saveFile.isDirectory()) {
-            restoreState();
-        } else {
-            Parameters parameters = new Parameters();
-            interpreters = new ArrayList<>();
-        }
+        prepare();
+
 
         shouldWait = true;
         File dir = new File(inputPath);
@@ -65,7 +87,7 @@ public class Main {
 
     public static void parseEntry(Node Entry) {
         NodeList children = Entry.getChildNodes();
-        System.out.println(Entry.toString());
+        System.out.println(Entry);
         String supplierCode = NUL;
         String article = NUL;
         Map<String, String> params = new TreeMap<>();
@@ -122,15 +144,16 @@ public class Main {
             FileReader restorer = new FileReader(savePath);
             SaveState saveState = new Gson().fromJson(restorer, SaveState.class);
             interpreters = saveState.getInterpreters();
+            Parameters.deletedParameters=saveState.getDeletedParameters();
             Parameters.setParameters(saveState.getParameters());
-            XSSFWorkbook workbook = new XSSFWorkbook(new FileInputStream(new File(Main.outputPath)));
+            XSSFWorkbook workbook = new XSSFWorkbook(new FileInputStream(Main.outputPath));
             XSSFSheet sheet = workbook.getSheetAt(0);
             Row row = sheet.getRow(0);
-            for (int i = 0; i < Parameters.getParameters().size(); i++) {
+            for (int i = 2; i < Parameters.getParameters().size(); i++) {
                 row.createCell(Main.outputIndex+i);
                 row.getCell(Main.outputIndex+i).setCellValue(Parameters.getParameters().get(i));
             }
-            workbook.write(new FileOutputStream(new File(Main.outputPath)));
+            workbook.write(new FileOutputStream(Main.outputPath));
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -138,7 +161,7 @@ public class Main {
     }
 
     public static void saveState() {
-        SaveState saveState = new SaveState(interpreters, Parameters.getParameters());
+        SaveState saveState = new SaveState(interpreters, Parameters.getParameters(),Parameters.deletedParameters);
         String jsonSaveState = new Gson().toJson(saveState);
         try {
             File saveFile = new File(savePath);
